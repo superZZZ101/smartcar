@@ -1,11 +1,11 @@
 /*
- * oled_menu.h --- 128x64 µ¥É« OLED ¶à²ã²Ëµ¥Ä£¿é
+ * oled_menu.h â€” 128x64 å•è‰² OLED å¤šå±‚èœå•æ¨¡å—
  *
- * Ö§³Ö: ¶à²ãÇ¶Ì××Ó²Ëµ¥, Ò³Ê½¹ö¶¯, °´¼üµ¼º½
- * Ê¹ÓÃ: UP/DOWN/ENTER Èı¼ü²Ù×÷
- * Ã¿ĞĞ 16 ÏñËØ¸ß, ¹² 4 ĞĞ¿É¼û
+ * æ”¯æŒ: å¤šå±‚åµŒå¥—å­èœå•, é¡µå¼æ»šåŠ¨, æŒ‰é”®å¯¼èˆª
+ * ä½¿ç”¨: UP/DOWN/ENTER ä¸‰é”®æ“ä½œ
+ * æ¯è¡Œ 16 åƒç´ é«˜, å…± 4 è¡Œå¯è§
  *
- * ÓÃ·¨:
+ * ç”¨æ³•:
  *   static const OLED_MenuItem subItems[] = {
  *       {"Sub 1", NULL, 0, action_fn},
  *       {"< Back", mainItems, OLED_MENU_COUNT(mainItems)},
@@ -20,7 +20,7 @@
  *   OLED_Menu_SetRoot(&menu, mainItems, OLED_MENU_COUNT(mainItems));
  *   OLED_Menu_Draw(&menu);
  *
- *   // Ö÷Ñ­»·:
+ *   // ä¸»å¾ªç¯:
  *   switch (KEY_Scan()) {
  *       case KEY_UP:    OLED_Menu_Prev(&menu); break;
  *       case KEY_DOWN:  OLED_Menu_Next(&menu); break;
@@ -36,31 +36,31 @@
 
 #define OLED_MENU_COUNT(arr)       (sizeof(arr) / sizeof((arr)[0]))
 #define OLED_MENU_MAX_DEPTH        4
-#define OLED_MENU_ENTER_SUBMENU   0xFF   /* Enter ·µ»Ø´ËÖµ±íÊ¾½øÈë×Ó²Ëµ¥ */
+#define OLED_MENU_ENTER_SUBMENU   0xFF   /* Enter è¿”å›æ­¤å€¼è¡¨ç¤ºè¿›å…¥å­èœå• */
 
-/** ²Ëµ¥Ïî»Øµ÷ --- Ñ¡ÖĞÒ¶×Ó½ÚµãÊ±×Ô¶¯µ÷ÓÃ */
+/** èœå•é¡¹å›è°ƒ â€” é€‰ä¸­å¶å­èŠ‚ç‚¹æ—¶è‡ªåŠ¨è°ƒç”¨ */
 typedef void (*MenuAction)(void);
 
-/** ²Ëµ¥Ïî (Ö§³ÖÇ¶Ì××Ó²Ëµ¥) */
+/** èœå•é¡¹ (æ”¯æŒåµŒå¥—å­èœå•) */
 typedef struct OLED_MenuItem OLED_MenuItem;
 
 struct OLED_MenuItem {
-    uint8_t *text;               /* ÏÔÊ¾ÎÄ±¾ (GB2312 ÖĞÎÄ/ASCII, ×î¶à 7 ¸öÈ«½Ç×Ö·û) */
-    const OLED_MenuItem *submenu;      /* ×Ó²Ëµ¥ (NULL = ÎŞ) */
-    uint8_t submenuCount;              /* ×Ó²Ëµ¥ÏîÊı */
-    MenuAction action;                 /* Ò¶×Ó½Úµã»Øµ÷ (NULL = ÎŞ) */
+    const uint8_t *text;               /* æ˜¾ç¤ºæ–‡æœ¬ (GB2312 ä¸­æ–‡/ASCII, æœ€å¤š 7 ä¸ªå…¨è§’å­—ç¬¦) */
+    const OLED_MenuItem *submenu;      /* å­èœå• (NULL = æ— ) */
+    uint8_t submenuCount;              /* å­èœå•é¡¹æ•° */
+    MenuAction action;                 /* å¶å­èŠ‚ç‚¹å›è°ƒ (NULL = æ— ) */
 };
 
-/** ²Ëµ¥ÊµÀı */
+/** èœå•å®ä¾‹ */
 typedef struct {
-    const OLED_MenuItem *items;        /* µ±Ç°²Ëµ¥ */
-    uint8_t count;                     /* ÏîÊı */
-    uint8_t selection;                 /* Ñ¡ÖĞË÷Òı */
-    uint8_t startLine;                 /* ÆğÊ¼ĞĞ (1-based) */
-    uint8_t visibleLines;              /* ¿É¼ûĞĞÊı */
-    uint8_t viewTop;                   /* ÊÓ¿Ú¶¥²¿Ë÷Òı */
+    const OLED_MenuItem *items;        /* å½“å‰èœå• */
+    uint8_t count;                     /* é¡¹æ•° */
+    uint8_t selection;                 /* é€‰ä¸­ç´¢å¼• */
+    uint8_t startLine;                 /* èµ·å§‹è¡Œ (1-based) */
+    uint8_t visibleLines;              /* å¯è§è¡Œæ•° */
+    uint8_t viewTop;                   /* è§†å£é¡¶éƒ¨ç´¢å¼• */
 
-    /* ÀúÊ·Õ» (·µ»ØÉÏ¼¶ÓÃ) */
+    /* å†å²æ ˆ (è¿”å›ä¸Šçº§ç”¨) */
     struct {
         const OLED_MenuItem *items;
         uint8_t count;
@@ -73,38 +73,38 @@ typedef struct {
  * API
  * ============================================================ */
 
-/** @brief ³õÊ¼»¯²Ëµ¥ */
+/** @brief åˆå§‹åŒ–èœå• */
 void OLED_Menu_Init(OLED_Menu *menu);
 
-/** @brief ÉèÖÃ¸ù²Ëµ¥ */
+/** @brief è®¾ç½®æ ¹èœå• */
 void OLED_Menu_SetRoot(OLED_Menu *menu, const OLED_MenuItem *items, uint8_t count);
 
-/** @brief È«Á¿»æÖÆ²Ëµ¥ */
+/** @brief å…¨é‡ç»˜åˆ¶èœå• */
 void OLED_Menu_Draw(const OLED_Menu *menu);
 
-/** @brief Ñ¡ÖĞÏÂÒ»Ïî */
+/** @brief é€‰ä¸­ä¸‹ä¸€é¡¹ */
 void OLED_Menu_Next(OLED_Menu *menu);
 
-/** @brief Ñ¡ÖĞÉÏÒ»Ïî */
+/** @brief é€‰ä¸­ä¸Šä¸€é¡¹ */
 void OLED_Menu_Prev(OLED_Menu *menu);
 
 /**
- * @brief È·ÈÏµ±Ç°Ñ¡Ïî
- * @return ÓĞ×Ó²Ëµ¥ -> OLED_MENU_ENTER_SUBMENU
- *         Ò¶×Ó½Úµã -> Ñ¡ÖĞË÷Òı (0-based)
+ * @brief ç¡®è®¤å½“å‰é€‰é¡¹
+ * @return æœ‰å­èœå• â†’ OLED_MENU_ENTER_SUBMENU
+ *         å¶å­èŠ‚ç‚¹ â†’ é€‰ä¸­ç´¢å¼• (0-based)
  */
 uint8_t OLED_Menu_Enter(OLED_Menu *menu);
 
 /**
- * @brief ·µ»ØÉÏ¼¶²Ëµ¥
- * @return 0=ÒÑÔÚ¸ù, 1=³É¹¦·µ»Ø
+ * @brief è¿”å›ä¸Šçº§èœå•
+ * @return 0=å·²åœ¨æ ¹, 1=æˆåŠŸè¿”å›
  */
 uint8_t OLED_Menu_Back(OLED_Menu *menu);
 
-/** @brief »ñÈ¡µ±Ç°Ñ¡ÖĞË÷Òı */
+/** @brief è·å–å½“å‰é€‰ä¸­ç´¢å¼• */
 uint8_t OLED_Menu_GetSelection(const OLED_Menu *menu);
 
-/** @brief ÅĞ¶ÏÊÇ·ñÔÚ¸ù²Ëµ¥ */
+/** @brief åˆ¤æ–­æ˜¯å¦åœ¨æ ¹èœå• */
 uint8_t OLED_Menu_IsRoot(const OLED_Menu *menu);
 
 #endif /* __OLED_MENU_H */

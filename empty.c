@@ -17,10 +17,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <uart.h>
-#include "motor_vars.h"
+#include "param.h"
 
-static char LText[10];
-static char RText[10];
+static char LText[12];
+static char RText[12];
 
 void pwm_setleftspeed();
 void pwm_setrightspeed();
@@ -42,41 +42,41 @@ static const OLED_MenuItem subMenu3[] = {
     {(uint8_t*)"P", NULL, 0, blink_1},
     {(uint8_t*)"I", NULL, 0, blink_2},
     {(uint8_t*)"D", NULL, 0, blink_3},
-    {(uint8_t*)"????",     mainItems, 5}
+    {(uint8_t*)"back",     mainItems, 5}
 };
 
 static const OLED_MenuItem subMenu2[] = {
     {(uint8_t*)"????2-1", NULL, 0, blink_3},
     {(uint8_t*)"????2-2", NULL, 0, blink_4},
-    {(uint8_t*)"????",     mainItems, 5}
+    {(uint8_t*)"back",     mainItems, 5}
 };
 
   // ?????
 static OLED_MenuItem subMenu1[] = {
     {(uint8_t*)LText, NULL, 0, pwm_setleftspeed},
     {(uint8_t*)RText, NULL, 0, pwm_setrightspeed},
-    {(uint8_t*)"???+/-", NULL, 0, pwm_setflag},
-    {(uint8_t*)"????",     mainItems, 5}
+    {(uint8_t*)"+/-", NULL, 0, pwm_setflag},
+    {(uint8_t*)"back",     mainItems, 5}
 };
 
 static const OLED_MenuItem subMenu4[] = {
     {(uint8_t*)"????4-1", NULL, 0, blink_7},
     {(uint8_t*)"????4-2", NULL, 0, blink_8},
-    {(uint8_t*)"????",     mainItems, 5}
+    {(uint8_t*)"back",     mainItems, 5}
 };
 
 static const OLED_MenuItem subMenu5[] = {
     {(uint8_t*)"????5-1", NULL, 0, blink_9},
     {(uint8_t*)"????5-2", NULL, 0, blink_10},
-    {(uint8_t*)"????",     mainItems, 5}
+    {(uint8_t*)"back",     mainItems, 5}
 };
 
 static const OLED_MenuItem mainItems[5] = {
-    {(uint8_t*)"§³?????",   subMenu1,  OLED_MENU_COUNT(subMenu1)},
-    {(uint8_t*)"??¡¤??????", subMenu2, OLED_MENU_COUNT(subMenu2)},
-    {(uint8_t*)"PID????",   subMenu3,  OLED_MENU_COUNT(subMenu3)},
-    {(uint8_t*)"???",       subMenu4,  OLED_MENU_COUNT(subMenu4)},
-    {(uint8_t*)"K210????",  subMenu5,  OLED_MENU_COUNT(subMenu5)},
+    {(uint8_t*)"pwm",   subMenu1,  OLED_MENU_COUNT(subMenu1)},
+    {(uint8_t*)"123", subMenu2, OLED_MENU_COUNT(subMenu2)},
+    {(uint8_t*)"PID",   subMenu3,  OLED_MENU_COUNT(subMenu3)},
+    {(uint8_t*)"duoji",       subMenu4,  OLED_MENU_COUNT(subMenu4)},
+    {(uint8_t*)"K210",  subMenu5,  OLED_MENU_COUNT(subMenu5)},
 };
 
 
@@ -85,6 +85,7 @@ OLED_Menu menu;
 int main(void) {
     SYSCFG_DL_init(); W25Q64_Init(); delay(5);
     W25Q64_ReadID(); led_on();
+    PARAM_Load();
     KEY_Init(); OLED_Init();
 		pwm_updateText();
     OLED_SetFontFlashBase(GB2312_FONT_FLASH_ADDR);
@@ -98,8 +99,9 @@ int main(void) {
 	printf("R:%d\r\n",right_speed);
 	printf("L:%d\r\n",left_speed);
 while (1) {
-    printf("R=%d\r\n", right_speed);  // ??????
+
     KeyEvent key = KEY_Scan();
+	printf("R:%d\r\n",right_speed);
     switch (key) {
         case KEY_UP:    OLED_Menu_Prev(&menu); break;
         case KEY_DOWN:  OLED_Menu_Next(&menu); break;
@@ -114,6 +116,7 @@ void pwm_setleftspeed(){
 //	if(left_speed>=1000) left_speed=1000;
 //	else if(left_speed<=-1000) left_speed=-1000;
     pwm_updateText(); //PWM_Run(left_speed,right_speed);
+    PARAM_Save();
 }
 
 void pwm_setrightspeed(){
@@ -122,16 +125,17 @@ void pwm_setrightspeed(){
 //	else if(right_speed<=-1000) right_speed=-1000;
     pwm_updateText(); //PWM_Run(left_speed,right_speed);
 	printf("%d\r\n",right_speed);
+    PARAM_Save();
 }
 
-void pwm_setflag(){ pwm_flag = !pwm_flag; }
+void pwm_setflag(){ pwm_flag = !pwm_flag; PARAM_Save(); }
 
 void pwm_updateText(void) {
-    sprintf(LText, "L:%d", left_speed);
-    sprintf(RText, "R:%d", right_speed);
+    snprintf(LText, sizeof(LText), "L:%d", left_speed);
+    snprintf(RText, sizeof(RText), "R:%d", right_speed);
 //		printf("%d",right_speed);
 }
-/* --- printf ????? (Keil MicroLIB) --- */
+/* --- printf ï¿½Ø¶ï¿½ï¿½ï¿½ (Keil MicroLIB) --- */
 int fputc(int ch, FILE *f)
 {
     (void)f;

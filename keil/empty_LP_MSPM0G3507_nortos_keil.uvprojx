@@ -475,9 +475,9 @@
               <FilePath>.\Core\Src\PWM.c</FilePath>
             </File>
             <File>
-              <FileName>motor_vars.c</FileName>
+              <FileName>param.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Core\Src\motor_vars.c</FilePath>
+              <FilePath>.\Core\Src\param.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -550,9 +550,9 @@
               <FilePath>.\Core\Inc\PWM.h</FilePath>
             </File>
             <File>
-              <FileName>motor_vars.h</FileName>
+              <FileName>param.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\Core\Inc\motor_vars.h</FilePath>
+              <FilePath>.\Core\Inc\param.h</FilePath>
             </File>
           </Files>
         </Group>

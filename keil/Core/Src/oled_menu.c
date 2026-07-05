@@ -1,25 +1,22 @@
 /*
- * oled_menu.c --- 128x64 ��ɫ OLED ���˵�ģ��
+ * oled_menu.c — 128x64 单色 OLED 多层菜单模块
  *
- * ʹ�� OLED_MenuRow() �� OLED_FillRow() ʵ�ֲ˵���Ⱦ
- * ѡ������ > ���, ��ѡ����ǰ���ո����
- * ֧��ҳʽ��ҳ (���� 4 ��ʱ�Զ���ҳ)
+ * 使用 OLED_MenuRow() 和 OLED_FillRow() 实现菜单渲染
+ * 选中项以 ▶ 标记, 非选中项前留空格对齐
+ * 支持页式翻页 (多于 4 项时自动分页)
  *
- * ����:
+ * 依赖:
  *   - OLED.h (OLED_MenuRow, OLED_FillRow, OLED_Clear)
  */
 
 #include "oled_menu.h"
 #include "OLED.h"
-#include <stdio.h>
-
-extern volatile int16_t right_speed;
 
 /* ============================================================
- * �ڲ�����
+ * 内部辅助
  * ============================================================ */
 
-/** �������һҳ�Ķ������� */
+/** 计算最后一页的顶部索引 */
 static uint8_t last_page_top(const OLED_Menu *menu)
 {
     if (menu->count == 0) return 0;
@@ -27,7 +24,7 @@ static uint8_t last_page_top(const OLED_Menu *menu)
     return ((menu->count - 1) / step) * step;
 }
 
-/** �����ӿ� (ѡ����ı�ʱ) */
+/** 调整视口 (选中项改变时) */
 static void adjust_view(OLED_Menu *menu, uint8_t oldSel)
 {
     if (menu->count <= menu->visibleLines)
@@ -38,7 +35,7 @@ static void adjust_view(OLED_Menu *menu, uint8_t oldSel)
 
     uint8_t step = menu->visibleLines;
 
-    /* ѭ��: ��ĩβ������ͷ / �ӿ�ͷ����ĩβ */
+    /* 循环: 从末尾跳到开头 / 从开头跳到末尾 */
     if (oldSel == menu->count - 1 && menu->selection == 0)
         menu->viewTop = 0;
     else if (oldSel == 0 && menu->selection == menu->count - 1)
@@ -50,7 +47,7 @@ static void adjust_view(OLED_Menu *menu, uint8_t oldSel)
 }
 
 /* ============================================================
- * ��ʼ��
+ * 初始化
  * ============================================================ */
 void OLED_Menu_Init(OLED_Menu *menu)
 {
@@ -58,7 +55,7 @@ void OLED_Menu_Init(OLED_Menu *menu)
     menu->count        = 0;
     menu->selection    = 0;
     menu->startLine    = 1;
-    menu->visibleLines = 4;      /* 128x64 OLED: 4 �� */
+    menu->visibleLines = 4;      /* 128x64 OLED: 4 行 */
     menu->viewTop      = 0;
     menu->historyDepth = 0;
 }
@@ -73,7 +70,7 @@ void OLED_Menu_SetRoot(OLED_Menu *menu, const OLED_MenuItem *items, uint8_t coun
 }
 
 /* ============================================================
- * ȫ������
+ * 全量绘制
  * ============================================================ */
 void OLED_Menu_Draw(const OLED_Menu *menu)
 {
@@ -92,45 +89,37 @@ void OLED_Menu_Draw(const OLED_Menu *menu)
 }
 
 /* ============================================================
- * ѡ���ƶ�
+ * 选中移动
  * ============================================================ */
 static void menu_move(OLED_Menu *menu, uint8_t newSel)
 {
     if (menu->count == 0) return;
 
     uint8_t oldSel = menu->selection;
-    printf("  menu_move start R=%d sel=%d new=%d top=%d\r\n", right_speed, oldSel, newSel, menu->viewTop);
     uint8_t oldTop = menu->viewTop;
     menu->selection = newSel;
-    printf("  after sel set R=%d\r\n", right_speed);
-    printf("  before adjust R=%d\r\n", right_speed);
     adjust_view(menu, oldSel);
-    printf("  after adjust R=%d\r\n", right_speed);
 
     if (menu->viewTop != oldTop)
     {
-        /* ҳ������ -> ȫ���ػ� */
+        /* 页滚动了 → 全量重绘 */
         OLED_Menu_Draw(menu);
     }
     else
     {
-        /* ͬҳ��, ֻ���¾�/������ */
+        /* 同页内, 只更新旧/新两行 */
         OLED_MenuRow(menu->startLine + (oldSel - menu->viewTop),
                      menu->items[oldSel].text, 0);
         OLED_MenuRow(menu->startLine + (menu->selection - menu->viewTop),
                      menu->items[menu->selection].text, 1);
     }
-    printf("  menu_move end R=%d\r\n", right_speed);
 }
 
 void OLED_Menu_Next(OLED_Menu *menu)
 {
     if (menu->count == 0) return;
-    printf("NEXT start R=%d\r\n", right_speed);
     uint8_t next = (menu->selection >= menu->count - 1) ? 0 : (menu->selection + 1);
-    printf("NEXT mid R=%d\r\n", right_speed);
     menu_move(menu, next);
-    printf("NEXT end R=%d\r\n", right_speed);
 }
 
 void OLED_Menu_Prev(OLED_Menu *menu)
@@ -141,7 +130,7 @@ void OLED_Menu_Prev(OLED_Menu *menu)
 }
 
 /* ============================================================
- * Enter --- ȷ��/�����Ӳ˵�
+ * Enter — 确认/进入子菜单
  * ============================================================ */
 uint8_t OLED_Menu_Enter(OLED_Menu *menu)
 {
@@ -151,14 +140,7 @@ uint8_t OLED_Menu_Enter(OLED_Menu *menu)
 
     if (item->submenu != NULL && item->submenuCount > 0)
     {
-        /* ���ָ������ϼ��˵� -> ���� */
-        if (menu->historyDepth > 0 &&
-            item->submenu == menu->history[menu->historyDepth - 1].items)
-        {
-            OLED_Menu_Back(menu);
-            return OLED_MENU_ENTER_SUBMENU;
-        }
-        /* ��ס��ǰ�˵� */
+        /* 记住当前菜单 */
         if (menu->historyDepth < OLED_MENU_MAX_DEPTH)
         {
             menu->history[menu->historyDepth].items     = menu->items;
@@ -166,7 +148,7 @@ uint8_t OLED_Menu_Enter(OLED_Menu *menu)
             menu->history[menu->historyDepth].selection = menu->selection;
             menu->historyDepth++;
         }
-        /* �л����Ӳ˵� */
+        /* 切换到子菜单 */
         menu->items     = item->submenu;
         menu->count     = item->submenuCount;
         menu->selection = 0;
@@ -175,15 +157,15 @@ uint8_t OLED_Menu_Enter(OLED_Menu *menu)
         return OLED_MENU_ENTER_SUBMENU;
     }
 
-    /* Ҷ�ӽڵ�: �ص� */
+    /* 叶子节点: 回调 */
     if (item->action != NULL)
         item->action();
-
+		   OLED_Menu_Draw(menu);
     return menu->selection;
 }
 
 /* ============================================================
- * Back --- �����ϼ�
+ * Back — 返回上级
  * ============================================================ */
 uint8_t OLED_Menu_Back(OLED_Menu *menu)
 {
@@ -199,7 +181,7 @@ uint8_t OLED_Menu_Back(OLED_Menu *menu)
 }
 
 /* ============================================================
- * ����
+ * 辅助
  * ============================================================ */
 uint8_t OLED_Menu_GetSelection(const OLED_Menu *menu)
 {

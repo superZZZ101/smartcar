@@ -8,8 +8,8 @@
 
 
 /* 按键电平（假设按下为低电平） */
-#define KEY_PRESSED    1
-#define KEY_RELEASED   0
+#define KEY_PRESSED    0
+#define KEY_RELEASED   1
 
 /* 消抖延时 (ms) */
 #define KEY_DEBOUNCE_MS   20
@@ -33,7 +33,7 @@ static uint8_t KEY_Read(GPIO_Regs *port, uint32_t pin) {
  * Init
  * ============================================================ */
 void KEY_Init(void) {
-    startupDone = 1;  /* 跳过首次按键过滤, 防止第一次按没响应 */
+    startupDone = 0;
 }
 
 /* ============================================================
