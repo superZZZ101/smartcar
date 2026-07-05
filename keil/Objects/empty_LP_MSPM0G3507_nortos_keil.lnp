@@ -1,0 +1,21 @@
+--cpu Cortex-M0+
+".\objects\empty.o"
+".\objects\startup_mspm0g350x_uvision.o"
+".\objects\ti_msp_dl_config.o"
+".\objects\delay.o"
+".\objects\key.o"
+".\objects\oled.o"
+".\objects\oled_menu.o"
+".\objects\w25q64.o"
+".\objects\font_receiver.o"
+".\objects\uart.o"
+".\objects\led.o"
+".\objects\bsp_ir_io.o"
+".\objects\encode.o"
+".\objects\line_following.o"
+".\objects\pwm.o"
+".\objects\motor_vars.o"
+--library_type=microlib --strict --scatter "./mspm0g3507.sct"
+../../../source/ti/driverlib/lib/keil/m0p/mspm0g1x0x_g3x0x/driverlib.a --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list ".\empty_LP_MSPM0G3507_nortos_keil.map" -o .\Objects\empty_LP_MSPM0G3507_nortos_keil.axf
