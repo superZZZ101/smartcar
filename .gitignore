@@ -1,0 +1,14 @@
+﻿# Keil build output
+keil/Objects/
+keil/*.uvguix.*
+keil/*.uvoptx
+keil/JLinkLog.txt
+keil/*.map
+keil/*.htm
+
+# Python tools
+tools/__pycache__/
+*.pyc
+
+# Temp scripts
+*.py
