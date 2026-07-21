@@ -3,6 +3,7 @@ keil/Objects/
 keil/*.uvguix.*
 keil/*.uvoptx
 keil/JLinkLog.txt
+keil/*.log
 keil/*.map
 keil/*.htm
 keil/*.axf

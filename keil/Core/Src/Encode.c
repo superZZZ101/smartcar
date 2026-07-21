@@ -30,13 +30,13 @@ void encode_getcount(void) {
 
 int16_t Encode_GetspeedL(){
 	int16_t temp=encode_L;
-  temp = temp * 3.769f;  
+  temp = temp * 4.557f;  
 	encode_L=0;
 	return temp;
 }
 int16_t Encode_GetspeedR(){
   int16_t temp=encode_R;
-  temp = temp * 3.769f;  
+  temp = temp * 4.557f;  
 	encode_R=0;
 	return temp;
 }

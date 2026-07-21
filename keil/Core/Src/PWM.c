@@ -2,7 +2,7 @@
 #include "PWM.h"
 #include "oled.h"
 //4096*0.6=2457.6
-#define MAX_SPEED 1001  // 最大电机PWM值
+#define MAX_SPEED 1000  // 最大电机PWM值
 // 电机方向控制引脚定义（根据实际硬件连接修改）
 #define MOTOR1_IN1_PIN       	WHEEL_CTRL_IN1_1_PIN
 #define MOTOR1_IN2_PIN       	WHEEL_CTRL_IN1_2_PIN
@@ -23,10 +23,9 @@ void  PWM_SetCompare(uint8_t channel,uint16_t dutyCycle){//0-1000
 		case 1:DL_TimerG_setCaptureCompareValue(WHEEL_INST,dutyCycle,GPIO_WHEEL_C1_IDX);break;
 	}
 }
-void GPIO_WritePin(	uint32_t gpio_pin,uint8_t i){
-	
-	if(i)DL_GPIO_setPins(WHEEL_CTRL_PORT,gpio_pin);  //输出高电平
-	else DL_GPIO_clearPins(GPIOB,gpio_pin);//输出低电平
+void GPIO_WritePin(uint32_t gpio_pin, uint8_t i) {
+    if (i) DL_GPIO_setPins(WHEEL_CTRL_PORT, gpio_pin);
+    else   DL_GPIO_clearPins(WHEEL_CTRL_PORT, gpio_pin);
 }
 
 	/**
@@ -59,8 +58,7 @@ void PWM_init() {
 		
 		GPIO_WritePin( MOTOR2_IN1_PIN, GPIO_PIN_RESET);
 		GPIO_WritePin(MOTOR2_IN2_PIN, GPIO_PIN_RESET);
-		
-//		OLED_ShowString(4,11, "Sleep");
+
 	}
 
 	// ====================== 电机控制函数 ======================
@@ -70,38 +68,31 @@ void PWM_init() {
 	  * @param right_speed: 右轮速度（-MAX_SPEED到+MAX_SPEED）
 	  */
 	void PWM_Run(int16_t left_speed, int16_t right_speed) {
-		// 1. 限幅保护（确保在安全范围内）
-//		left_speed = constrain(left_speed, -MAX_SPEED, MAX_SPEED);
-//		right_speed = constrain(right_speed, -MAX_SPEED, MAX_SPEED);
-		
-		// 2. 设置左轮方向和PWM
-		if (left_speed>= 0) {
-			// 正向旋转
+		// 限幅保护
+		if (left_speed  >  MAX_SPEED) left_speed  =  MAX_SPEED;
+		if (left_speed  < -MAX_SPEED) left_speed  = -MAX_SPEED;
+		if (right_speed >  MAX_SPEED) right_speed =  MAX_SPEED;
+		if (right_speed < -MAX_SPEED) right_speed = -MAX_SPEED;
+
+		// 左轮
+		if (left_speed >= 0) {
 			GPIO_WritePin(MOTOR1_IN1_PIN, GPIO_PIN_SET);
 			GPIO_WritePin(MOTOR1_IN2_PIN, GPIO_PIN_RESET);
-			PWM_SetCompare(TIM_CHANNEL_1, MAX_SPEED-abs(left_speed));
-			
 		} else {
-			// 反向旋转
-			 GPIO_WritePin(MOTOR1_IN1_PIN, GPIO_PIN_RESET);
+			GPIO_WritePin(MOTOR1_IN1_PIN, GPIO_PIN_RESET);
 			GPIO_WritePin(MOTOR1_IN2_PIN, GPIO_PIN_SET);
-			PWM_SetCompare(TIM_CHANNEL_1, MAX_SPEED-abs(left_speed));
 		}
-		
-		// 3. 设置右轮方向和PWM
-		if ( right_speed >= 0) {
-			// 正向旋转
-			GPIO_WritePin( MOTOR2_IN1_PIN, GPIO_PIN_RESET);
-			GPIO_WritePin(MOTOR2_IN2_PIN, GPIO_PIN_SET);
-			PWM_SetCompare(TIM_CHANNEL_2, MAX_SPEED-abs(right_speed));
-		} else {
-			// 反向旋转
-			GPIO_WritePin( MOTOR2_IN1_PIN, GPIO_PIN_SET);
-			GPIO_WritePin(MOTOR2_IN2_PIN, GPIO_PIN_RESET);
-			PWM_SetCompare(TIM_CHANNEL_2, MAX_SPEED-abs(right_speed));
-		}
-		  OLED_ShowString(4,11, "Run!");
+		PWM_SetCompare(TIM_CHANNEL_1, MAX_SPEED - abs(left_speed));
 
+		// 右轮
+		if (right_speed >= 0) {
+			GPIO_WritePin(MOTOR2_IN1_PIN, GPIO_PIN_RESET);
+			GPIO_WritePin(MOTOR2_IN2_PIN, GPIO_PIN_SET);
+		} else {
+			GPIO_WritePin(MOTOR2_IN1_PIN, GPIO_PIN_SET);
+			GPIO_WritePin(MOTOR2_IN2_PIN, GPIO_PIN_RESET);
+		}
+		PWM_SetCompare(TIM_CHANNEL_2, MAX_SPEED - abs(right_speed));
 	}
 
 
@@ -116,7 +107,6 @@ void PWM_init() {
 			GPIO_WritePin(MOTOR1_IN2_PIN, GPIO_PIN_RESET);
 		GPIO_WritePin( MOTOR2_IN1_PIN, GPIO_PIN_RESET);
 			GPIO_WritePin(MOTOR2_IN2_PIN, GPIO_PIN_RESET);
-		
-		OLED_ShowString(4,11, "Stop!");
+
 	}
 

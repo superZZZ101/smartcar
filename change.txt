@@ -1,0 +1,12 @@
+把调速度pi单独分出来，修改step精细度
+P6
+I0.0025
+D3
+SP 0.32
+SI	0.07
+
+
+#define BASE_SPEED        250      // 电机基准转速（PWM值, ≤ MAX_SPEED=1000）
+#define MAX_SPEED 1000  // 最大电机PWM值
+#define LINE_SPEED_LIMIT  600  // 循迹速度上限
+#define CTRL_INTERVAL_MS  10   // 控制周期（毫秒）

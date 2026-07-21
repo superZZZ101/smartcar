@@ -1,14 +1,16 @@
 /*
- * oled.c — 128x64 I2C OLED 驱动 (纯 GB2312 字库)
+ * oled.c — 128x64 I2C OLED 驱动 (GB2312 + 半角 ASCII)
  *
- * 所有字符使用 GB2312 16x16 字模 (W25Q64 存储)
- * ASCII 自动映射为全角显示
+ * 中文: GB2312 16x16 字模 (W25Q64 存储)
+ * ASCII: 内嵌 8x16 半角点阵字库
+ * 菜单渲染: 中英文混排, 中文全角/英文半角
  */
 
 #include "OLED.h"
 #include "ti_msp_dl_config.h"
 #include "delay.h"
 #include "w25q64.h"
+#include "OLED_Font.h"
 
 /* ============================================================
  * I2C 引脚操作
@@ -119,11 +121,36 @@ static void draw_16x16(uint8_t page, uint8_t col, const uint8_t *bmp) {
 }
 
 /* ============================================================
+ * 8x16 半角 ASCII 渲染 (内建字库)
+ * ============================================================ */
+static void draw_8x16(uint8_t page, uint8_t col, const uint8_t *bmp) {
+    uint8_t buf[8];
+    /* 上半: rows 0-7 */
+    for (uint8_t c = 0; c < 8; c++) {
+        uint8_t v = 0;
+        for (uint8_t r = 0; r < 8; r++) {
+            if ((bmp[r] >> (7 - c)) & 1) v |= (1 << r);
+        }
+        buf[c] = v;
+    }
+    OLED_SetCursor(page, col); i2c_write_bulk(buf, 8);
+    /* 下半: rows 8-15 */
+    for (uint8_t c = 0; c < 8; c++) {
+        uint8_t v = 0;
+        for (uint8_t r = 0; r < 8; r++) {
+            if ((bmp[r + 8] >> (7 - c)) & 1) v |= (1 << r);
+        }
+        buf[c] = v;
+    }
+    OLED_SetCursor(page + 1, col); i2c_write_bulk(buf, 8);
+}
+
+/* ============================================================
  * GB2312 中文显示
  * ============================================================ */
 int8_t OLED_ShowChinese(uint8_t Line, uint8_t Column, uint16_t gbCode) {
-    if (Line < 1 || Line > 4) return -1;
-    if (Column < 1 || Column > 8) return -1;
+    if (Line < 1 || Line > OLED_LINES) return -1;
+    if (Column < 1 || Column > OLED_COLS_FW) return -1;
 
     int32_t off = gb2312_offset(gbCode);
     if (off < 0) return -1;
@@ -137,32 +164,77 @@ int8_t OLED_ShowChinese(uint8_t Line, uint8_t Column, uint16_t gbCode) {
 void OLED_ShowChineseString(uint8_t Line, uint8_t Column, const uint8_t *str) {
     uint8_t col = Column;
     while (*str) {
-        if (col > 8) break;
+        if (col > OLED_COLS_FW) break;
         OLED_ShowChinese(Line, col, ((uint16_t)str[0] << 8) | str[1]);
         str += 2; col++;
     }
 }
 
 /* ============================================================
- * ASCII → GB2312 全角映射
+ * 像素级位置显示 (混排用)
  * ============================================================ */
-static uint16_t ascii_to_gb2312(char c) {
-    if (c == ' ') return 0xA1A1;        /* 表意空格 */
-    if (c >= 0x21 && c <= 0x7E)
-        return (0xA3UL << 8) | (uint8_t)(c - 0x21 + 0xA1);
-    return 0xA1A1;
+
+/** @brief 在指定像素 X 位置显示 GB2312 16x16 全角字符 */
+void OLED_ShowChinesePx(uint8_t Line, uint16_t px, uint16_t gbCode) {
+    if (Line < 1 || Line > OLED_LINES) return;
+    if (px > OLED_WIDTH - 16) return;
+
+    int32_t off = gb2312_offset(gbCode);
+    if (off < 0) return;
+
+    uint8_t bmp[32];
+    W25Q64_ReadData(g_fontAddr + (uint32_t)off, bmp, 32);
+    draw_16x16((Line - 1) * 2, (uint8_t)px, bmp);
 }
 
+/** @brief 在指定像素 X 位置显示 8x16 半角 ASCII 字符 */
+void OLED_ShowHalfWidthAtPx(uint8_t Line, uint16_t px, char ch) {
+    if (Line < 1 || Line > OLED_LINES) return;
+    if (px > OLED_WIDTH - 8) return;
+    if (ch < 0x20 || ch > 0x7E) ch = ' ';
+
+    uint8_t page = (Line - 1) * 2;
+    uint8_t col  = (uint8_t)px;
+    uint8_t idx  = (uint8_t)(ch - 0x20);
+
+    /* OLED_F8x16 是 column-major: [0..7] = 上半 8 列, [8..15] = 下半 8 列, 直写 */
+    OLED_SetCursor(page, col);
+    i2c_write_bulk(OLED_F8x16[idx], 8);
+
+    OLED_SetCursor(page + 1, col);
+    i2c_write_bulk(&OLED_F8x16[idx][8], 8);
+}
+
+/* ============================================================
+ * 混排字符串: Column=1~16 (半角 8px 单位)
+ *   中文 → 16x16 全角 (占 2 格)
+ *   英文 → 8x16  半角 (占 1 格)
+ * ============================================================ */
 void OLED_ShowChar(uint8_t Line, uint8_t Column, char Ch) {
+    if (Line < 1 || Line > OLED_LINES) return;
     if (Column < 1 || Column > OLED_COLS) return;
-    OLED_ShowChinese(Line, Column, ascii_to_gb2312(Ch));
+    OLED_ShowHalfWidthAtPx(Line, (Column - 1) * 8, Ch);
 }
 
-void OLED_ShowString(uint8_t Line, uint8_t Column, char *str) {
+void OLED_ShowString(uint8_t Line, uint8_t Column, const uint8_t *str) {
+    if (Line < 1 || Line > OLED_LINES) return;
+    if (Column < 1 || Column > OLED_COLS) return;
+
     while (*str) {
         if (Column > OLED_COLS) break;
-        OLED_ShowChar(Line, Column, *str);
-        str++; Column++;
+
+        if (*str < 0xA1) {
+            /* 半角 ASCII */
+            OLED_ShowHalfWidthAtPx(Line, (Column - 1) * 8, (char)*str);
+            str++;
+            Column++;
+        } else {
+            /* 全角中文 (GB2312 双字节) */
+            if (Column + 1 > OLED_COLS) break;
+            OLED_ShowChinesePx(Line, (Column - 1) * 8, ((uint16_t)str[0] << 8) | str[1]);
+            str += 2;
+            Column += 2;
+        }
     }
 }
 
@@ -203,7 +275,7 @@ void OLED_ShowBinNum(uint8_t Line, uint8_t Column, uint32_t N, uint8_t Len) {
 }
 
 /* ============================================================
- * 菜单渲染 (每行 8 个全角字符)
+ * 菜单渲染 (混排: 英文半角 8px, 中文全角 16px)
  * ============================================================ */
 void OLED_FillRow(uint8_t Line, uint8_t on) {
     if (Line < 1 || Line > OLED_LINES) return;
@@ -219,31 +291,27 @@ void OLED_FillRow(uint8_t Line, uint8_t on) {
 void OLED_MenuRow(uint8_t Line, const uint8_t *text, uint8_t selected) {
     if (Line < 1 || Line > OLED_LINES) return;
     OLED_FillRow(Line, 0);
-    if (selected) {
-        /* 选中: 列1 显示 >, 列2 开始显示文本 */
-        OLED_ShowChar(Line, 1, '>');
-        uint8_t col = 2;
-        while (*text && col <= OLED_COLS) {
-            if (*text < 0xA1) {
-                OLED_ShowChar(Line, col, (char)*text);
-                text++; col++;
-            } else {
-                OLED_ShowChinese(Line, col, ((uint16_t)text[0] << 8) | text[1]);
-                text += 2; col++;
+
+    uint16_t px = 0;  /* 像素 X 坐标 */
+
+    /* 选中标记: 半角 '>' 或空格 (8px) */
+    OLED_ShowHalfWidthAtPx(Line, px, selected ? '>' : ' ');
+    px += 8;
+
+    /* 混排渲染: ASCII=8px 半角, 中文=16px 全角 */
+    while (*text && px + 8 <= OLED_WIDTH) {
+        if (*text < 0xA1) {
+            /* ASCII — 半角 8px */
+            OLED_ShowHalfWidthAtPx(Line, px, (char)*text);
+            text++;
+            px += 8;
+        } else {
+            /* 中文 — 全角 16px */
+            if (px + 16 <= OLED_WIDTH) {
+                OLED_ShowChinesePx(Line, px, ((uint16_t)text[0] << 8) | text[1]);
             }
-        }
-    } else {
-        /* 未选中: 列1 空格, 列2 开始显示文本 */
-        OLED_ShowChar(Line, 1, ' ');
-        uint8_t col = 2;
-        while (*text && col <= OLED_COLS) {
-            if (*text < 0xA1) {
-                OLED_ShowChar(Line, col, (char)*text);
-                text++; col++;
-            } else {
-                OLED_ShowChinese(Line, col, ((uint16_t)text[0] << 8) | text[1]);
-                text += 2; col++;
-            }
+            text += 2;
+            px += 16;
         }
     }
 }

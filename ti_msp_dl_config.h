@@ -168,50 +168,34 @@ extern "C" {
 /* Defines for IN2_2: GPIOA.17 with pinCMx 39 on package pin 10 */
 #define WHEEL_CTRL_IN2_2_PIN                                    (DL_GPIO_PIN_17)
 #define WHEEL_CTRL_IN2_2_IOMUX                                   (IOMUX_PINCM39)
-/* Defines for IR1: GPIOA.28 with pinCMx 3 on package pin 35 */
-#define IR_SENSOR_IR1_PORT                                               (GPIOA)
-#define IR_SENSOR_IR1_PIN                                       (DL_GPIO_PIN_28)
-#define IR_SENSOR_IR1_IOMUX                                       (IOMUX_PINCM3)
-/* Defines for IR2: GPIOA.31 with pinCMx 6 on package pin 39 */
-#define IR_SENSOR_IR2_PORT                                               (GPIOA)
-#define IR_SENSOR_IR2_PIN                                       (DL_GPIO_PIN_31)
-#define IR_SENSOR_IR2_IOMUX                                       (IOMUX_PINCM6)
-/* Defines for IR3: GPIOB.4 with pinCMx 17 on package pin 52 */
-#define IR_SENSOR_IR3_PORT                                               (GPIOB)
-#define IR_SENSOR_IR3_PIN                                        (DL_GPIO_PIN_4)
-#define IR_SENSOR_IR3_IOMUX                                      (IOMUX_PINCM17)
-/* Defines for IR4: GPIOB.5 with pinCMx 18 on package pin 53 */
-#define IR_SENSOR_IR4_PORT                                               (GPIOB)
-#define IR_SENSOR_IR4_PIN                                        (DL_GPIO_PIN_5)
-#define IR_SENSOR_IR4_IOMUX                                      (IOMUX_PINCM18)
-/* Defines for IR5: GPIOB.0 with pinCMx 12 on package pin 47 */
-#define IR_SENSOR_IR5_PORT                                               (GPIOB)
-#define IR_SENSOR_IR5_PIN                                        (DL_GPIO_PIN_0)
-#define IR_SENSOR_IR5_IOMUX                                      (IOMUX_PINCM12)
-/* Defines for IR6: GPIOB.11 with pinCMx 28 on package pin 63 */
-#define IR_SENSOR_IR6_PORT                                               (GPIOB)
-#define IR_SENSOR_IR6_PIN                                       (DL_GPIO_PIN_11)
-#define IR_SENSOR_IR6_IOMUX                                      (IOMUX_PINCM28)
-/* Defines for IR7: GPIOB.12 with pinCMx 29 on package pin 64 */
-#define IR_SENSOR_IR7_PORT                                               (GPIOB)
-#define IR_SENSOR_IR7_PIN                                       (DL_GPIO_PIN_12)
-#define IR_SENSOR_IR7_IOMUX                                      (IOMUX_PINCM29)
-/* Defines for IR8: GPIOB.13 with pinCMx 30 on package pin 1 */
-#define IR_SENSOR_IR8_PORT                                               (GPIOB)
-#define IR_SENSOR_IR8_PIN                                       (DL_GPIO_PIN_13)
-#define IR_SENSOR_IR8_IOMUX                                      (IOMUX_PINCM30)
+/* Defines for AD2: GPIOB.5 with pinCMx 18 on package pin 53 */
+#define IR_SENSOR_AD2_PORT                                               (GPIOB)
+#define IR_SENSOR_AD2_PIN                                        (DL_GPIO_PIN_5)
+#define IR_SENSOR_AD2_IOMUX                                      (IOMUX_PINCM18)
+/* Defines for AD1: GPIOB.4 with pinCMx 17 on package pin 52 */
+#define IR_SENSOR_AD1_PORT                                               (GPIOB)
+#define IR_SENSOR_AD1_PIN                                        (DL_GPIO_PIN_4)
+#define IR_SENSOR_AD1_IOMUX                                      (IOMUX_PINCM17)
+/* Defines for AD0: GPIOA.31 with pinCMx 6 on package pin 39 */
+#define IR_SENSOR_AD0_PORT                                               (GPIOA)
+#define IR_SENSOR_AD0_PIN                                       (DL_GPIO_PIN_31)
+#define IR_SENSOR_AD0_IOMUX                                       (IOMUX_PINCM6)
+/* Defines for OUT: GPIOA.28 with pinCMx 3 on package pin 35 */
+#define IR_SENSOR_OUT_PORT                                               (GPIOA)
+#define IR_SENSOR_OUT_PIN                                       (DL_GPIO_PIN_28)
+#define IR_SENSOR_OUT_IOMUX                                       (IOMUX_PINCM3)
 /* Port definition for Pin Group KEY */
 #define KEY_PORT                                                         (GPIOB)
 
 /* Defines for UP: GPIOB.8 with pinCMx 25 on package pin 60 */
 #define KEY_UP_PIN                                               (DL_GPIO_PIN_8)
 #define KEY_UP_IOMUX                                             (IOMUX_PINCM25)
-/* Defines for DOWN: GPIOB.7 with pinCMx 24 on package pin 59 */
-#define KEY_DOWN_PIN                                             (DL_GPIO_PIN_7)
-#define KEY_DOWN_IOMUX                                           (IOMUX_PINCM24)
-/* Defines for ENTER: GPIOB.6 with pinCMx 23 on package pin 58 */
-#define KEY_ENTER_PIN                                            (DL_GPIO_PIN_6)
-#define KEY_ENTER_IOMUX                                          (IOMUX_PINCM23)
+/* Defines for DOWN: GPIOB.6 with pinCMx 23 on package pin 58 */
+#define KEY_DOWN_PIN                                             (DL_GPIO_PIN_6)
+#define KEY_DOWN_IOMUX                                           (IOMUX_PINCM23)
+/* Defines for ENTER: GPIOB.7 with pinCMx 24 on package pin 59 */
+#define KEY_ENTER_PIN                                            (DL_GPIO_PIN_7)
+#define KEY_ENTER_IOMUX                                          (IOMUX_PINCM24)
 /* Defines for cs: GPIOA.27 with pinCMx 60 on package pin 31 */
 #define W25Q64_cs_PORT                                                   (GPIOA)
 #define W25Q64_cs_PIN                                           (DL_GPIO_PIN_27)
@@ -230,6 +214,8 @@ extern "C" {
 #define W25Q64_di_IOMUX                                          (IOMUX_PINCM48)
 
 
+
+
 /* clang-format on */
 
 void SYSCFG_DL_init(void);
@@ -239,6 +225,7 @@ void SYSCFG_DL_SYSCTL_init(void);
 void SYSCFG_DL_WHEEL_init(void);
 void SYSCFG_DL_UART0_init(void);
 
+void SYSCFG_DL_SYSTICK_init(void);
 
 bool SYSCFG_DL_saveConfiguration(void);
 bool SYSCFG_DL_restoreConfiguration(void);

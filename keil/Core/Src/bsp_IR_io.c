@@ -1,190 +1,137 @@
-// bsp_IR_gpio.c
-// 使用 GPIO 直接读取 8 路红外传感器状态（每路一个独立引脚）
+/*
+ * bsp_IR_io.c — 多路复用型灰度传感器驱动
+ *
+ * 传感器: 3 位地址线 (MCU 输出) + 1 位数据线 (MCU 输入)
+ *   设置地址 → 读取数据 → 得到 1 个传感器位, 循环 8 次得到完整字节
+ *
+ * 引脚映射 (用 SysConfig 已定义的 GPIO):
+ *   GRAY_ADDR0 = IR_SENSOR_IR1   ← SysConfig 中需设为输出
+ *   GRAY_ADDR1 = IR_SENSOR_IR2   ← SysConfig 中需设为输出
+ *   GRAY_ADDR2 = IR_SENSOR_IR3   ← SysConfig 中需设为输出
+ *   GRAY_DATA  = IR_SENSOR_IR4   ← SysConfig 中保持输入
+ */
+
+#include "bsp_IR_io.h"
 #include "ti_msp_dl_config.h"
-#include <stdint.h>
+#include "delay.h"
 
-// ====================== 引脚自定义区域 ======================
-// 请根据实际硬件连接修改以下端口和引脚号
-// 假设传感器输出电平：低电平 = 检测到黑线，高电平 = 无黑线
-// 若您的传感器极性相反，请调整 Read_IR_SensorByte 中的逻辑
+/* ============================================================
+ * 引脚映射 (对应 SysConfig 中的 IR_SENSOR)
+ * ============================================================ */
+/* 3 位地址线 — 在 SysConfig 中将 AD0/AD1/AD2 设为 输出 */
+#define GRAY_ADDR0_PORT   IR_SENSOR_AD0_PORT
+#define GRAY_ADDR0_PIN    IR_SENSOR_AD0_PIN
 
-// 传感器 1 引脚
-#define IR_SENSOR1_PORT   IR_SENSOR_IR1_PORT
-#define IR_SENSOR1_PIN    IR_SENSOR_IR1_PIN
+#define GRAY_ADDR1_PORT   IR_SENSOR_AD1_PORT
+#define GRAY_ADDR1_PIN    IR_SENSOR_AD1_PIN
 
-// 传感器 2 引脚
-#define IR_SENSOR2_PORT   IR_SENSOR_IR2_PORT
-#define IR_SENSOR2_PIN    IR_SENSOR_IR2_PIN
+#define GRAY_ADDR2_PORT   IR_SENSOR_AD2_PORT
+#define GRAY_ADDR2_PIN    IR_SENSOR_AD2_PIN
 
-// 传感器 3 引脚
-#define IR_SENSOR3_PORT   IR_SENSOR_IR3_PORT
-#define IR_SENSOR3_PIN    IR_SENSOR_IR3_PIN
+/* 1 位数据输入 — 在 SysConfig 中将 OUT 保持 输入 */
+#define GRAY_DATA_PORT    IR_SENSOR_OUT_PORT
+#define GRAY_DATA_PIN     IR_SENSOR_OUT_PIN
 
-// 传感器 4 引脚
-#define IR_SENSOR4_PORT   IR_SENSOR_IR4_PORT
-#define IR_SENSOR4_PIN    IR_SENSOR_IR4_PIN
+/* 传感器极性: 0 = 检测到黑线, 1 = 无黑线 (若相反就交换) */
+#define GRAY_ACTIVE_LEVEL  0   /* 0: 低电平=黑线, 1: 高电平=黑线 */
 
-// 传感器 5 引脚
-#define IR_SENSOR5_PORT   IR_SENSOR_IR5_PORT
-#define IR_SENSOR5_PIN    IR_SENSOR_IR5_PIN
+/* 屏蔽故障传感器: 第 1 路 (addr=0) 硬件损坏, 常亮, 忽略它 */
+#define BROKEN_SENSOR_MASK  ~(1 << 0)
 
-// 传感器 6 引脚
-#define IR_SENSOR6_PORT   IR_SENSOR_IR6_PORT
-#define IR_SENSOR6_PIN    IR_SENSOR_IR6_PIN
+/* ============================================================
+ * 设置 3 位地址
+ * ============================================================ */
+static void gray_set_addr(uint8_t addr) {
+    /* ADDR0 = bit0, ADDR1 = bit1, ADDR2 = bit2 */
+    if (addr & 0x01)
+        DL_GPIO_setPins(GRAY_ADDR0_PORT, GRAY_ADDR0_PIN);
+    else
+        DL_GPIO_clearPins(GRAY_ADDR0_PORT, GRAY_ADDR0_PIN);
 
-// 传感器 7 引脚
-#define IR_SENSOR7_PORT   IR_SENSOR_IR7_PORT
-#define IR_SENSOR7_PIN    IR_SENSOR_IR7_PIN
+    if (addr & 0x02)
+        DL_GPIO_setPins(GRAY_ADDR1_PORT, GRAY_ADDR1_PIN);
+    else
+        DL_GPIO_clearPins(GRAY_ADDR1_PORT, GRAY_ADDR1_PIN);
 
-// 传感器 8 引脚
-#define IR_SENSOR8_PORT   IR_SENSOR_IR8_PORT
-#define IR_SENSOR8_PIN    IR_SENSOR_IR8_PIN
+    if (addr & 0x04)
+        DL_GPIO_setPins(GRAY_ADDR2_PORT, GRAY_ADDR2_PIN);
+    else
+        DL_GPIO_clearPins(GRAY_ADDR2_PORT, GRAY_ADDR2_PIN);
 
-
-// ====================== 传感器控制函数 ======================
-/**
-  * @brief 设置传感器校准模式（GPIO 版本无此功能，保留为空函数以兼容原有调用）
-  * @param mode: 无效参数，仅用于接口兼容
-  */
-void set_adjust_mode(uint8_t mode) {
-    // GPIO 直连传感器通常无需校准，此函数保留以兼容原有代码
-    (void)mode;
+    /* 等待地址稳定 ~50us @ 32MHz */
+    for (volatile uint32_t _d = 0; _d < 400; _d++);
 }
 
-// ====================== 读取原始数据 ======================
-/**
-  * @brief 读取所有 GPIO 引脚状态并组合成一个字节
-  * @retval 8位状态字节，每位对应一个传感器（bit0 = 传感器1）
-  *         位值含义：0 = 检测到黑线，1 = 未检测到黑线
-  * @note   引脚读取使用 DL_GPIO_readPins，需根据实际 DriverLib 调整函数名
-  */
+/* ============================================================
+ * 读取数据引脚
+ * ============================================================ */
+static uint8_t gray_read_data(void) {
+    uint32_t val = DL_GPIO_readPins(GRAY_DATA_PORT, GRAY_DATA_PIN);
+#if GRAY_ACTIVE_LEVEL == 0
+    return (val == 0) ? 0 : 1;   /* 低=黑线(0), 高=无线(1) */
+#else
+    return (val != 0) ? 0 : 1;   /* 高=黑线(0), 低=无线(1) */
+#endif
+}
+
+/* ============================================================
+ * 读取 8 位传感器数据 (地址 0~7)
+ * ============================================================ */
 static uint8_t read_IRdata(void) {
     uint8_t data = 0;
-
-    // 读取传感器1（bit0）
-    if (DL_GPIO_readPins(IR_SENSOR1_PORT, IR_SENSOR1_PIN) == 0) {
-        // 低电平 -> 检测到黑线 -> 对应位设为 0
-        data &= ~(1 << 0);
-    } else {
-        // 高电平 -> 未检测到黑线 -> 对应位设为 1
-        data |= (1 << 0);
+    for (uint8_t addr = 0; addr < 8; addr++) {
+        gray_set_addr(addr);
+        if (gray_read_data() == 0)
+            data |= (1 << addr);   /* 检测到黑线时该位置 1 */
     }
-
-    // 读取传感器2（bit1）
-    if (DL_GPIO_readPins(IR_SENSOR2_PORT, IR_SENSOR2_PIN) == 0) {
-        data &= ~(1 << 1);
-    } else {
-        data |= (1 << 1);
-    }
-
-    // 传感器3（bit2）
-    if (DL_GPIO_readPins(IR_SENSOR3_PORT, IR_SENSOR3_PIN) == 0) {
-        data &= ~(1 << 2);
-    } else {
-        data |= (1 << 2);
-    }
-
-    // 传感器4（bit3）
-    if (DL_GPIO_readPins(IR_SENSOR4_PORT, IR_SENSOR4_PIN) == 0) {
-        data &= ~(1 << 3);
-    } else {
-        data |= (1 << 3);
-    }
-
-    // 传感器5（bit4）
-    if (DL_GPIO_readPins(IR_SENSOR5_PORT, IR_SENSOR5_PIN) == 0) {
-        data &= ~(1 << 4);
-    } else {
-        data |= (1 << 4);
-    }
-
-    // 传感器6（bit5）
-    if (DL_GPIO_readPins(IR_SENSOR6_PORT, IR_SENSOR6_PIN) == 0) {
-        data &= ~(1 << 5);
-    } else {
-        data |= (1 << 5);
-    }
-
-    // 传感器7（bit6）
-    if (DL_GPIO_readPins(IR_SENSOR7_PORT, IR_SENSOR7_PIN) == 0) {
-        data &= ~(1 << 6);
-    } else {
-        data |= (1 << 6);
-    }
-
-    // 传感器8（bit7）
-    if (DL_GPIO_readPins(IR_SENSOR8_PORT, IR_SENSOR8_PIN) == 0) {
-        data &= ~(1 << 7);
-    } else {
-        data |= (1 << 7);
-    }
-
     return data;
 }
 
-// ====================== 数据处理函数 ======================
-/**
-  * @brief 读取并返回传感器字节数据
-  * @retval 传感器状态字节，每 bit 对应一个传感器（0=黑线，1=无黑线）
-  * @note   通信失败（GPIO 读取总是成功）故无需重试
-  */
+/* ============================================================
+ * 对外接口: 读取传感器字节 (兼容原有调用方)
+ * ============================================================ */
 uint8_t Read_IR_SensorByte(void) {
-    return read_IRdata();
+    return read_IRdata() & BROKEN_SENSOR_MASK;
 }
 
-/**
-  * @brief 解析传感器字节数据到数组
-  * @param sensors: 存储解析结果的数组（长度8）
-  * @note 最终数组中元素含义：0 = 检测到黑线，1 = 未检测到黑线
-  *       与原 I2C 版本行为完全一致
-  */
+/* ============================================================
+ * 空校准函数 (复用接口兼容)
+ * ============================================================ */
+void set_adjust_mode(uint8_t mode) {
+    (void)mode;
+}
+
+/* ============================================================
+ * 解析字节到数组: sensors[i] = 0 表示黑线, 1 表示无线
+ * ============================================================ */
 void deal_IRdata(uint8_t sensors[8]) {
     uint8_t IRbuf = Read_IR_SensorByte();
-
-    // 解析每个传感器值（与原有逻辑相同，包括最后的异或翻转）
     for (int i = 0; i < 8; i++) {
-        /*
-         * 位解析说明：
-         *   (IRbuf >> i) & 0x01 : 提取第 i 位原始值（0=黑线，1=无黑线）
-         *   ^ 0x01              : 翻转值，使得最终 sensors[i]=0 表示黑线
-         * 结果：
-         *   0 = 检测到黑线
-         *   1 = 未检测到黑线
-         */
         sensors[i] = ((IRbuf >> i) & 0x01) ^ 0x01;
     }
 }
 
-// ====================== OLED显示函数 ======================
-/**
-  * @brief 在OLED上显示8路红外传感器状态
-  * @param sensors: 传感器状态数组（长度8）
-  * @note 显示格式：
-  *        第2行: x1 x2 x3 x4
-  *        第3行: x5 x6 x7 x8
-  */
+/* ============================================================
+ * OLED 显示 8 路传感器状态 (混排: 半角)
+ * ============================================================ */
 void OLED_ShowIRSensors(void) {
     uint8_t sensors[8];
-    
-    // 读取传感器原始数据并解析为数组 (0=黑线,1=无黑线)
-    deal_IRdata(sensors);
-	// 第2行: 显示传感器1-4
-    OLED_ShowString(2, 1, "x1-x4:");
-    OLED_ShowNum(2, 7, sensors[0], 1);
-    OLED_ShowString(2, 8, ",");
-    OLED_ShowNum(2, 9, sensors[1], 1);
-    OLED_ShowString(2, 10, ",");
-    OLED_ShowNum(2, 11, sensors[2], 1);
-    OLED_ShowString(2, 12, ",");
-    OLED_ShowNum(2, 13, sensors[3], 1);
+    char buf[2];
+    uint8_t i;
 
-    // 第3行: 显示传感器5-8
-    OLED_ShowString(3, 1, "x5-x8:");
-    OLED_ShowNum(3, 7, sensors[4], 1);
-    OLED_ShowString(3, 8, ",");
-    OLED_ShowNum(3, 9, sensors[5], 1);
-    OLED_ShowString(3, 10, ",");
-    OLED_ShowNum(3, 11, sensors[6], 1);
-    OLED_ShowString(3, 12, ",");
-    OLED_ShowNum(3, 13, sensors[7], 1);
+    deal_IRdata(sensors);
+
+    OLED_ShowString(2, 1, (const uint8_t*)"x1-x4:");
+    for (i = 0; i < 4; i++) {
+        if (i) OLED_ShowString(2, 7 + 2 * i, (const uint8_t*)",");
+        buf[0] = (char)(sensors[i] + '0'); buf[1] = '\0';
+        OLED_ShowString(2, 8 + 2 * i, (const uint8_t*)buf);
+    }
+
+    OLED_ShowString(3, 1, (const uint8_t*)"x5-x8:");
+    for (i = 0; i < 4; i++) {
+        if (i) OLED_ShowString(3, 7 + 2 * i, (const uint8_t*)",");
+        buf[0] = (char)(sensors[4 + i] + '0'); buf[1] = '\0';
+        OLED_ShowString(3, 8 + 2 * i, (const uint8_t*)buf);
+    }
 }

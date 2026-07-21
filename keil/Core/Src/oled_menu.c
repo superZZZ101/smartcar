@@ -17,16 +17,10 @@
  * ============================================================ */
 
 /** 计算最后一页的顶部索引 */
-static uint8_t last_page_top(const OLED_Menu *menu)
-{
-    if (menu->count == 0) return 0;
-    uint8_t step = menu->visibleLines;
-    return ((menu->count - 1) / step) * step;
-}
-
-/** 调整视口 (选中项改变时) */
+/** 调整视口 (简单分页: 第 n 页显示 items[n*4 ~ n*4+3]) */
 static void adjust_view(OLED_Menu *menu, uint8_t oldSel)
 {
+    (void)oldSel;
     if (menu->count <= menu->visibleLines)
     {
         menu->viewTop = 0;
@@ -34,16 +28,7 @@ static void adjust_view(OLED_Menu *menu, uint8_t oldSel)
     }
 
     uint8_t step = menu->visibleLines;
-
-    /* 循环: 从末尾跳到开头 / 从开头跳到末尾 */
-    if (oldSel == menu->count - 1 && menu->selection == 0)
-        menu->viewTop = 0;
-    else if (oldSel == 0 && menu->selection == menu->count - 1)
-        menu->viewTop = last_page_top(menu);
-    else if (menu->selection >= menu->viewTop + step)
-        menu->viewTop += step;
-    else if (menu->selection < menu->viewTop)
-        menu->viewTop -= step;
+    menu->viewTop = (menu->selection / step) * step;
 }
 
 /* ============================================================
@@ -158,9 +143,14 @@ uint8_t OLED_Menu_Enter(OLED_Menu *menu)
     }
 
     /* 叶子节点: 回调 */
-    if (item->action != NULL)
+    if (item->action != NULL) {
+        uint8_t oldDepth = menu->historyDepth;
         item->action();
-		   OLED_Menu_Draw(menu);
+        if (menu->historyDepth == oldDepth)
+            OLED_Menu_Draw(menu);  /* 未返回上级才重绘 */
+    } else {
+        OLED_Menu_Draw(menu);
+    }
     return menu->selection;
 }
 
@@ -175,7 +165,11 @@ uint8_t OLED_Menu_Back(OLED_Menu *menu)
     menu->items     = menu->history[menu->historyDepth].items;
     menu->count     = menu->history[menu->historyDepth].count;
     menu->selection = menu->history[menu->historyDepth].selection;
-    menu->viewTop   = 0;
+    /* 分页: 回到选中项所在页 */
+    {
+        uint8_t step = menu->visibleLines;
+        menu->viewTop = (menu->selection / step) * step;
+    }
     OLED_Menu_Draw(menu);
     return 1;
 }
