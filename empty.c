@@ -14,6 +14,7 @@
 #include "line_following.h"
 #include "PWM.h"
 #include <stdbool.h>
+#include <stdio.h>     /* snprintf */
 #include "param.h"
 
 /* PID 限幅  */

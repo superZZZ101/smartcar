@@ -1,6 +1,5 @@
 //PWM.c
 #include "PWM.h"
-#include "oled.h"
 //4096*0.6=2457.6
 #define MAX_SPEED 1000  // 最大电机PWM值
 // 电机方向控制引脚定义（根据实际硬件连接修改）

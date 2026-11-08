@@ -5,6 +5,7 @@
 #include "Encode.h"    // 编码器速度反馈
 
 #include <stdio.h>
+#include <math.h>      // fminf / fabsf
 #define HAL_Delay(X)		delay_cycles( (CPUCLK_FREQ/1000) * (X) )
 // 外部依赖声明
 //extern I2C_HandleTypeDef hi2c2;    // I2C2外设句柄（用于传感器通信）
