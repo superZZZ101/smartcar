@@ -1,20 +1,48 @@
-# Keil build output
+# ---- Keil MDK build output ----
 keil/Objects/
-keil/*.uvguix.*
-keil/*.uvoptx
-keil/JLinkLog.txt
-keil/*.log
-keil/*.map
-keil/*.htm
+keil/Listings/
+keil/DebugConfig/
+keil/RTE/
+*.uvguix.*
+*.uvoptx
 keil/*.axf
 keil/*.hex
+keil/*.bin
+keil/*.map
 keil/*.lnp
 keil/*.dep
+keil/*.crf
+keil/*.o
+keil/*.d
+keil/*.htm
+keil/*.iex
+keil/*.sct.bak
+keil/JLinkLog.txt
+keil/*.log
 
-# Python tools
+# ---- SysConfig / TI build intermediates ----
+*.obj
+*.out
+*.pp
+gcc/objects/
+ticlang/objects/
+iar/*.pbi
+iar/*.pbd
+
+# ---- Python tooling ----
 tools/__pycache__/
+__pycache__/
 *.pyc
+tools/gb2312_hzk16.bin
 
-# Temp scripts
+# ---- Editors / OS ----
+.vscode/
+.idea/
+*.bak
+*~
+Thumbs.db
+desktop.ini
+
+# ---- Local scratch scripts ----
 cleanup.py
 update_vars.py
